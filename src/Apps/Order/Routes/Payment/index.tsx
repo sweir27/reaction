@@ -70,6 +70,7 @@ interface PaymentState {
   addressTouched: AddressTouched
   stripeError: stripe.Error
   isCreatingStripeToken: boolean
+  saveCreditCard: boolean
 }
 
 const logger = createLogger("Order/Routes/Payment/index.tsx")
@@ -83,6 +84,7 @@ export class PaymentRoute extends Component<PaymentProps, PaymentState> {
     address: this.startingAddress(),
     addressErrors: {},
     addressTouched: {},
+    saveCreditCard: true,
   }
 
   startingAddress(): Address {
@@ -139,7 +141,7 @@ export class PaymentRoute extends Component<PaymentProps, PaymentState> {
       const creditCardOrError = (await this.createCreditCard({
         input: {
           token: stripeResult.token.id,
-          oneTimeUse: true,
+          oneTimeUse: !this.state.saveCreditCard,
         },
       })).createCreditCard.creditCardOrError
 
@@ -190,6 +192,10 @@ export class PaymentRoute extends Component<PaymentProps, PaymentState> {
     }
 
     this.setState({ hideBillingAddress })
+  }
+
+  handleChangeSaveCreditCard(saveCreditCard: boolean) {
+    this.setState({ saveCreditCard })
   }
 
   onAddressChange: AddressChangeHandler = (address, key) => {
@@ -254,23 +260,35 @@ export class PaymentRoute extends Component<PaymentProps, PaymentState> {
                     />
                   </Flex>
 
-                  {!this.isPickup() && (
+                  <>
+                    {!this.isPickup() && (
+                      <Checkbox
+                        selected={this.state.hideBillingAddress}
+                        onSelect={this.handleChangeHideBillingAddress.bind(
+                          this
+                        )}
+                      >
+                        Billing and shipping addresses are the same.
+                      </Checkbox>
+                    )}
+                    <Collapse open={this.needsAddress()}>
+                      <Spacer mb={3} />
+                      <AddressForm
+                        value={address}
+                        errors={addressErrors}
+                        touched={addressTouched}
+                        onChange={this.onAddressChange}
+                        billing
+                      />
+                    </Collapse>
+
                     <Checkbox
-                      selected={this.state.hideBillingAddress}
-                      onSelect={this.handleChangeHideBillingAddress.bind(this)}
+                      selected={this.state.saveCreditCard}
+                      onSelect={this.handleChangeSaveCreditCard.bind(this)}
                     >
-                      Billing and shipping addresses are the same
+                      Save credit card for later use.
                     </Checkbox>
-                  )}
-                  <Collapse open={this.needsAddress()}>
-                    <AddressForm
-                      value={address}
-                      errors={addressErrors}
-                      touched={addressTouched}
-                      onChange={this.onAddressChange}
-                      billing
-                    />
-                  </Collapse>
+                  </>
 
                   <Media greaterThan="xs">
                     <ContinueButton
